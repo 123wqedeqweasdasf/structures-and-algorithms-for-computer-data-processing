@@ -1,0 +1,54 @@
+import csv
+from pathlib import Path
+import matplotlib.pyplot as plt
+
+
+def main():
+    folder = Path(__file__).resolve().parent
+    with (folder / "results.csv").open(encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+
+    values = [2, 3, 4, 5, 8, 16, 32]
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    for ax, mode, title in zip(axes, ["random", "worst"],
+                               ["Случайная граница", "Худший случай: все единицы"]):
+        for k in values:
+            data = [r for r in rows if int(r["k"]) == k and r["mode"] == mode]
+            ax.plot([int(r["bytes"]) for r in data],
+                    [float(r["time_ns"]) / 1000 for r in data],
+                    marker="o", markersize=3, label=f"k = {k}")
+        ax.set_xscale("log", base=2)
+        ax.set_xlabel("Объём входных данных, байты")
+        ax.set_ylabel("Время одного поиска, мкс")
+        ax.set_title(title)
+        ax.grid(True, alpha=0.3)
+        ax.legend(fontsize=8)
+    fig.tight_layout()
+    fig.savefig(folder / "time.png", dpi=160)
+    plt.close(fig)
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+    for ax, mode, title in zip(axes, ["random", "worst"],
+                               ["Случайная граница", "Худший случай"]):
+        data = sorted([r for r in rows if int(r["n"]) == 1048576 and r["mode"] == mode],
+                      key=lambda r: int(r["k"]))
+        ks = [int(r["k"]) for r in data]
+        ax.plot(ks, [float(r["time_ns"]) / 1000 for r in data],
+                "o-", color="tab:blue", label="Время")
+        ax.set_xlabel("Число частей k")
+        ax.set_ylabel("Время одного поиска, мкс", color="tab:blue")
+        ax.set_title(title + "; объём 1 048 576 байт")
+        other = ax.twinx()
+        other.plot(ks, [float(r["checks"]) for r in data],
+                   "s--", color="tab:orange", label="Проверки")
+        label = "Среднее число проверок" if mode == "random" else "Число проверок"
+        other.set_ylabel(label, color="tab:orange")
+        ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(folder / "compare_k.png", dpi=160)
+    plt.close(fig)
+    print("Сохранены time.png и compare_k.png")
+
+
+if __name__ == "__main__":
+    main()
